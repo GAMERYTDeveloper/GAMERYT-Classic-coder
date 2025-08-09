@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>GAMERYT Classic Coder</title>
+
+<!-- Material Icons Outlined -->
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#09081a; --panel:#111029; --panel-2:#0e0d22; --ink:#e7e7f7;
+    --muted:#b3b3d1; --brand:#347bff; --brand-700:#1d5edb; --ring:0 0 0 2px rgba(52,123,255,.35);
+    --radius:12px; --code:#0b0a1f; --border:#1b1a33; --ok:#16a34a; --warn:#f59e0b;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    min-width:922px; margin:0; color:var(--ink); background:linear-gradient(180deg,#0a0621 0%, #07061a 100%);
+    font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+  }
+
+  /* Mobile site (auto by UA): remove min-width lock */
+  body.mobile-mode{ min-width:unset; }
+
+  /* Top bar */
+  .topbar{
+    display:flex; align-items:center; gap:14px; padding:12px 18px; background:#190042; border-bottom:1px solid var(--border);
+    position:sticky; top:0; z-index:10;
+  }
+  .brand{display:flex; align-items:center; gap:10px; font-weight:700}
+  .brand .title{display:inline}
+  .top-actions{margin-left:auto; display:flex; align-items:center; gap:8px}
+  .icon-btn{
+    display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:10px;
+    background:transparent; border:1px solid transparent; color:var(--ink); cursor:pointer;
+  }
+  .icon-btn:hover{background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.08)}
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 14px; border-radius:10px;
+    background:var(--brand); color:#fff; border:0; cursor:pointer; font-weight:600;
+  }
+  .btn:hover{background:var(--brand-700)}
+  .material-icons-outlined{font-size:20px; line-height:20px}
+
+  /* Mobile-mode UI trims */
+  .mobile-mode .btn .btn-text{ display:none; }         /* hide Run/Download text */
+  .mobile-mode #formatBtn{ display:none; }             /* hide Format icon */
+  .mobile-mode #undoBtn,
+  .mobile-mode #redoBtn{ display:none; }               /* hide Undo/Redo */
+  .mobile-mode .brand .title{ display:none; }          /* hide logo text */
+
+  /* Settings dropdown */
+  .dropdown{
+    position:absolute; right:14px; top:56px; width:260px; background:var(--panel); border:1px solid var(--border);
+    border-radius:12px; padding:12px; display:none; box-shadow:var(--ring);
+  }
+  .dropdown h4{margin:6px 0 10px; font-size:13px; color:var(--muted); font-weight:700; letter-spacing:.02em}
+  .field{display:flex; flex-direction:column; gap:6px; margin-bottom:10px}
+  .field label{font-size:12px; color:var(--muted)}
+  select{
+    background:var(--panel-2); color:var(--ink); border:1px solid var(--border);
+    height:36px; border-radius:10px; padding:0 10px; outline:none;
+  }
+  .row{display:flex; gap:10px}
+
+  /* Workspace split */
+  .workspace{height:calc(100vh - 64px); display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:10px}
+  .workspace.vertical{grid-template-columns:1fr; grid-template-rows:1fr 1fr}
+
+  .pane{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px; overflow:hidden; display:flex; flex-direction:column;
+  }
+
+  /* Tabs + editor */
+  .tabs{
+    display:flex; gap:6px; padding:8px; background:var(--panel-2); border-bottom:1px solid var(--border);
+  }
+  .tab{
+    height:32px; padding:0 12px; display:inline-flex; align-items:center; gap:8px; border-radius:10px; cursor:pointer;
+    color:var(--muted); background:transparent; border:1px solid transparent; font-weight:600;
+  }
+  .tab .label{display:inline}
+  .tab.active{color:#fff; background:#1a1836; border-color:#2d2a52}
+  .editor-wrap{position:relative; flex:1; display:flex}
+  textarea.code{
+    flex:1; width:100%; resize:none; border:0; outline:none; padding:14px; background:var(--code); color:#e9e9ff;
+    font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,Monaco,"Liberation Mono",Menlo,monospace;
+  }
+  textarea.code:not(.active){display:none}
+
+  /* In mobile-mode: tabs become icon-only */
+  .mobile-mode .tab .label{display:none}
+
+  /* left-side preview host (used for full-page preview in mobile) */
+  .left-preview{flex:1; display:none; background:#0c0b1e}
+
+  /* Preview (right pane) */
+  .preview-head{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; background:var(--panel-2); border-bottom:1px solid var(--border);
+  }
+  .preview-area{flex:1; position:relative}
+  iframe#preview{
+    border:0; width:100%; height:100%; background:#0c0b1e; border-bottom-left-radius:14px; border-bottom-right-radius:14px;
+  }
+
+  /* Toasts */
+  .toast{
+    position:fixed; right:18px; bottom:18px; background:#151336; color:#fff; border:1px solid var(--border);
+    border-radius:12px; padding:10px 12px; z-index:9999; box-shadow:var(--ring);
+    opacity:0; transform:translateY(6px); transition:all .25s ease;
+  }
+  .toast.show{opacity:1; transform:translateY(0)}
+  .kbd{padding:.1rem .35rem; border:1px solid #33324f; border-bottom-width:2px; border-radius:6px; background:#10102a; font-family:ui-monospace,monospace}
+
+  /* Chips */
+  .chip{display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--muted)}
+  .chip .material-icons-outlined{font-size:16px}
+
+  /* Narrow helper */
+  @media (max-width:1100px){
+    .brand span:last-child{display:none}
+  }
+
+  /* Mobile site rules for preview visibility */
+  #tabPreview{ display:none; }
+  .mobile-mode #tabPreview{ display:inline-flex; }              /* show the Preview tab option */
+  .mobile-mode #rightPane{ display:none; }                      /* hide bottom/right preview by default on mobile */
+  .mobile-mode.preview-open .tabs{ display:none; }              /* hide tabs bar when full-page preview is open */
+</style>
+</head>
+<body>
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="material-icons-outlined">code</span>
+      <span class="title">GAMERYT Classic Coder</span>
+      <span class="chip"><span class="material-icons-outlined">dark_mode</span> Dark • HTML/CSS/JS only</span>
+    </div>
+
+    <div class="top-actions">
+      <button class="icon-btn" id="undoBtn" title="Undo (Ctrl+Z)"><span class="material-icons-outlined">undo</span></button>
+      <button class="icon-btn" id="redoBtn" title="Redo (Ctrl+Y / Ctrl+Shift+Z)"><span class="material-icons-outlined">redo</span></button>
+      <button class="icon-btn" id="formatBtn" title="Format Code (basic)"><span class="material-icons-outlined">format_indent_increase</span></button>
+      <button class="icon-btn" id="saveBtn" title="Save to Local (Ctrl+S)"><span class="material-icons-outlined">save</span></button>
+      <button class="icon-btn" id="helpBtn" title="Help"><span class="material-icons-outlined">help</span></button>
+      <button class="icon-btn" id="settingsBtn" title="Settings"><span class="material-icons-outlined">settings</span></button>
+      <button class="btn" id="runBtn" title="Run / Preview (Ctrl+Enter)">
+        <span class="material-icons-outlined">play_arrow</span> <span class="btn-text">Run</span>
+      </button>
+      <button class="btn" id="downloadBtn" title="Download .html">
+        <span class="material-icons-outlined">download</span> <span class="btn-text">Download</span>
+      </button>
+    </div>
+
+    <!-- Settings dropdown -->
+    <div id="settingsMenu" class="dropdown">
+      <h4>Settings</h4>
+      <div class="field">
+        <label for="langSel">Language</label>
+        <select id="langSel">
+          <option value="en">English</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="previewPos">Preview Position</label>
+        <select id="previewPos">
+          <option value="horizontal">Horizontal (side-by-side)</option>
+          <option value="vertical">Vertical (stacked)</option>
+        </select>
+      </div>
+      <div class="row">
+        <button class="btn" id="applySettings"><span class="material-icons-outlined">done</span> <span class="btn-text">Apply</span></button>
+        <button class="icon-btn" id="closeSettings" title="Close"><span class="material-icons-outlined">close</span></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Workspace -->
+  <main class="workspace" id="workspace">
+    <!-- Left: Editors (and mobile preview host) -->
+    <section class="pane" id="leftPane">
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-target="htmlEditor"><span class="material-icons-outlined">code</span> <span class="label">HTML</span></button>
+        <button class="tab" data-target="cssEditor"><span class="material-icons-outlined">palette</span> <span class="label">CSS</span></button>
+        <button class="tab" data-target="jsEditor"><span class="material-icons-outlined">data_object</span> <span class="label">JavaScript</span></button>
+        <button class="tab" id="tabPreview" data-target="leftPreview"><span class="material-icons-outlined">visibility</span> <span class="label">Preview</span></button>
+      </div>
+      <div class="editor-wrap">
+        <textarea id="htmlEditor" class="code active" spellcheck="false"></textarea>
+        <textarea id="cssEditor" class="code" spellcheck="false"></textarea>
+        <textarea id="jsEditor" class="code" spellcheck="false"></textarea>
+        <!-- Will hold the iframe when full-page preview is opened in mobile -->
+        <div id="leftPreviewHost" class="left-preview"></div>
+      </div>
+    </section>
+
+    <!-- Right: Preview (hidden on mobile until Preview tab is tapped) -->
+    <section class="pane" id="rightPane">
+      <div class="preview-head">
+        <div class="chip"><span class="material-icons-outlined">visibility</span> Preview</div>
+        <div class="chip" id="previewStatus"><span class="material-icons-outlined">bolt</span> Idle</div>
+      </div>
+      <div class="preview-area" id="rightPreviewArea">
+        <!-- allow="" restored, sandbox stays tight -->
+        <iframe id="preview"
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; notifications; clipboard-read; camera; microphone; accelerometer; gyroscope; magnetometer"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-pointer-lock allow-modals allow-downloads allow-presentation"></iframe>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+<script>
+/* ========= util ========= */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+const toast = (msg) => {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>el.classList.remove('show'), 2000);
+};
+const storageKey = 'gyt_classic_project_v1';
+
+/* ========= tabs ========= */
+const editors = {
+  html: $('#htmlEditor'),
+  css:  $('#cssEditor'),
+  js:   $('#jsEditor')
+};
+
+$('#tabs').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.tab');
+  if(!btn) return;
+  $$('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const target = btn.dataset.target;
+
+  // If Preview tab in mobile-mode -> full-page preview (move iframe left, hide right, hide tabs bar)
+  if(target === 'leftPreview'){
+    openFullPreview();
+    return;
+  }else{
+    closeFullPreviewIfOpen();
+  }
+
+  $$('textarea.code').forEach(t=>t.classList.remove('active'));
+  $('#'+target).classList.add('active');
+});
+
+/* ========= undo/redo (light stacks) ========= */
+function History(textarea){
+  this.ta = textarea;
+  this.stack = [textarea.value];
+  this.i = 0;
+  this.lock = false;
+  textarea.addEventListener('input', ()=>{
+    if(this.lock) return;
+    clearTimeout(this._t);
+    this._t = setTimeout(()=>{
+      const v = textarea.value;
+      if(v !== this.stack[this.i]){
+        this.stack = this.stack.slice(0, this.i+1);
+        this.stack.push(v);
+        this.i++;
+      }
+    }, 180);
+  });
+}
+History.prototype.undo = function(){ if(this.i>0){ this.i--; this.lock=true; this.ta.value=this.stack[this.i]; this.lock=false; } }
+History.prototype.redo = function(){ if(this.i<this.stack.length-1){ this.i++; this.lock=true; this.ta.value=this.stack[this.i]; this.lock=false; } }
+
+const hist = { html:new History(editors.html), css:new History(editors.css), js:new History(editors.js) };
+function activeKey(){
+  const id = $('.tab.active').dataset.target;
+  return id==='htmlEditor'?'html':id==='cssEditor'?'css':'js';
+}
+$('#undoBtn').onclick = ()=>{ const k = $('.tab.active')?.dataset.target; if(k!=='leftPreview') hist[activeKey()].undo(); };
+$('#redoBtn').onclick = ()=>{ const k = $('.tab.active')?.dataset.target; if(k!=='leftPreview') hist[activeKey()].redo(); };
+
+/* ========= format (basic) ========= */
+function formatBasic(kind, src){
+  if(!src.trim()) return src;
+  if(kind==='css' || kind==='js'){
+    let out='', ind=0;
+    for(const ch of src.replace(/\r/g,'')){
+      if(ch==='}'){ ind=Math.max(0, ind-1); out+='\n'+('  '.repeat(ind))+'}'; }
+      else if(ch==='{'){ out+=' {\n'+('  '.repeat(++ind)); }
+      else if(ch===';'){ out+=';\n'+('  '.repeat(ind)); }
+      else out+=ch;
+    }
+    return out.replace(/\n{3,}/g,'\n\n').trim()+'\n';
+  }
+  if(kind==='html'){
+    const parts = src.replace(/>\s+</g,'><').replace(/</g,'\n<').split('\n').filter(Boolean);
+    let out='', ind=0;
+    for(let line of parts){
+      if(/^<\/[^>]+>/.test(line)) ind=Math.max(0, ind-1);
+      out += '  '.repeat(ind) + line.trim() + '\n';
+      if(/^<[^!/?][^>]*[^\/]>$/.test(line)) ind++;
+    }
+    return out;
+  }
+  return src;
+}
+$('#formatBtn').onclick = ()=>{
+  const k = activeKey();
+  const ta = editors[k];
+  ta.value = formatBasic(k, ta.value);
+  toast('Formatted '+k.toUpperCase());
+};
+
+/* ========= run / build preview ========= */
+function buildHTMLDoc(html, css, js){
+  return `<!DOCTYPE html><html><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>${css}</style>
+</head><body>
+${html}
+<script>${js}<\/script>
+</body></html>`;
+}
+function run(){
+  const html = editors.html.value, css = editors.css.value, js = editors.js.value;
+  const doc = buildHTMLDoc(html, css, js);
+  const iframe = $('#preview');
+  $('#previewStatus').innerHTML = '<span class="material-icons-outlined">bolt</span> Running…';
+  iframe.srcdoc = doc; // sandboxed
+  setTimeout(()=>$('#previewStatus').innerHTML = '<span class="material-icons-outlined">task_alt</span> Ready', 150);
+}
+$('#runBtn').onclick = run;
+
+/* ========= mobile full-page preview handling ========= */
+const rightPane = $('#rightPane');
+const rightPreviewArea = $('#rightPreviewArea');
+const leftPreviewHost = $('#leftPreviewHost');
+const iframe = $('#preview');
+
+function openFullPreview(){
+  if(!document.body.classList.contains('mobile-mode')) return;
+  // hide editors and tabs, move iframe left, hide right pane
+  $$('textarea.code').forEach(t=>t.classList.remove('active'));
+  document.body.classList.add('preview-open');
+  leftPreviewHost.style.display = 'block';
+  if(iframe.parentElement !== leftPreviewHost){
+    leftPreviewHost.appendChild(iframe);
+  }
+  rightPane.style.display = 'none';
+}
+
+function closeFullPreviewIfOpen(){
+  if(!document.body.classList.contains('mobile-mode')) return;
+  if(!document.body.classList.contains('preview-open')) return;
+  document.body.classList.remove('preview-open');
+  leftPreviewHost.style.display = 'none';
+  if(iframe.parentElement !== rightPreviewArea){
+    rightPreviewArea.appendChild(iframe);
+  }
+  // keep right pane hidden on mobile; editors will show by activating a code tab
+  rightPane.style.display = 'none';
+}
+
+/* ========= save / load / download ========= */
+function saveLocal(){
+  const payload = {
+    html: editors.html.value,
+    css:  editors.css.value,
+    js:   editors.js.value,
+    prefs: {
+      lang: $('#langSel').value,
+      pos:  $('#previewPos').value
+    }
+  };
+  localStorage.setItem(storageKey, JSON.stringify(payload));
+  toast('Saved locally ✓');
+}
+function loadLocal(){
+  const raw = localStorage.getItem(storageKey);
+  if(!raw) return;
+  try{
+    const p = JSON.parse(raw);
+    editors.html.value = p.html ?? '';
+    editors.css.value  = p.css ?? '';
+    editors.js.value   = p.js ?? '';
+    if(p.prefs){
+      $('#langSel').value = p.prefs.lang || 'en';
+      $('#previewPos').value = p.prefs.pos || 'horizontal';
+      applyPreviewPos($('#previewPos').value, false);
+    }
+  }catch(e){}
+}
+function downloadFile(){
+  const doc = buildHTMLDoc(editors.html.value, editors.css.value, editors.js.value);
+  const blob = new Blob([doc], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'classic_project.html';
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(a.href);
+  a.remove();
+  toast('Downloaded classic_project.html');
+}
+$('#saveBtn').onclick = saveLocal;
+$('#downloadBtn').onclick = downloadFile;
+
+/* ========= settings ========= */
+const settingsBtn = $('#settingsBtn');
+const settingsMenu = $('#settingsMenu');
+function toggleSettings(show){
+  settingsMenu.style.display = (show ?? settingsMenu.style.display!=='block') ? 'block' : 'none';
+}
+settingsBtn.onclick = ()=>toggleSettings(true);
+$('#closeSettings').onclick = ()=>toggleSettings(false);
+
+function applyPreviewPos(value, notify=true){
+  const ws = $('#workspace');
+  ws.classList.toggle('vertical', value==='vertical');
+  if(notify) toast('Preview: '+(value==='vertical'?'Vertical':'Horizontal'));
+}
+$('#applySettings').onclick = ()=>{
+  applyPreviewPos($('#previewPos').value);
+  saveLocal();
+  toggleSettings(false);
+};
+
+/* ========= help ========= */
+$('#helpBtn').onclick = ()=>{
+  toast('Help: Ctrl+Enter Run • Ctrl+S Save • Tabs switch editors • Settings → Preview position');
+};
+
+/* ========= UA-based mobile mode (no button) ========= */
+function setMobileMode(on){
+  document.body.classList.toggle('mobile-mode', !!on);
+  if(on){
+    // default vertical layout helps on small screens
+    applyPreviewPos('vertical', false);
+    // ensure right/bottom preview stays hidden on mobile until user taps Preview tab
+    rightPane.style.display = 'none';
+    // ensure preview not stuck from previous state
+    closeFullPreviewIfOpen();
+  }else{
+    // desktop: show right preview pane again
+    rightPane.style.display = 'flex';
+    // make sure iframe is back on the right
+    if(iframe.parentElement !== rightPreviewArea){
+      rightPreviewArea.appendChild(iframe);
+    }
+    document.body.classList.remove('preview-open');
+  }
+}
+
+/* ========= shortcuts ========= */
+document.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); saveLocal(); }
+  if((e.ctrlKey || e.metaKey) && e.key==='Enter'){ e.preventDefault(); run(); }
+});
+
+/* ========= boot ========= */
+loadLocal();
+applyPreviewPos($('#previewPos').value || 'horizontal', false);
+$('#previewStatus').innerHTML = '<span class="material-icons-outlined">hourglass_empty</span> Idle';
+
+/* Auto-enable mobile mode based on device UA */
+if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+  setMobileMode(true);
+}
+</script>
+</body>
+</html>
