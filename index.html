@@ -470,10 +470,44 @@ loadLocal();
 applyPreviewPos($('#previewPos').value || 'horizontal', false);
 $('#previewStatus').innerHTML = '<span class="material-icons-outlined">hourglass_empty</span> Idle';
 
-/* Auto-enable mobile mode based on device UA */
+function updateViewport(mobile) {
+  let vp = document.querySelector('meta[name="viewport"]');
+  if (!vp) {
+    vp = document.createElement('meta');
+    vp.name = "viewport";
+    document.head.appendChild(vp);
+  }
+  if (mobile) {
+    vp.setAttribute("content", "width=device-width, initial-scale=1");
+  } else {
+    vp.setAttribute("content", "width=923, user-scalable=no");
+  }
+}
+
+// Modify setMobileMode to also update viewport
+function setMobileMode(on) {
+  document.body.classList.toggle('mobile-mode', !!on);
+  updateViewport(!!on);
+  if (on) {
+    applyPreviewPos('vertical', false);
+    rightPane.style.display = 'none';
+    closeFullPreviewIfOpen();
+  } else {
+    rightPane.style.display = 'flex';
+    if (iframe.parentElement !== rightPreviewArea) {
+      rightPreviewArea.appendChild(iframe);
+    }
+    document.body.classList.remove('preview-open');
+  }
+}
+
+// On boot:
 if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
   setMobileMode(true);
+} else {
+  setMobileMode(false);
 }
+
 </script>
 </body>
 </html>
